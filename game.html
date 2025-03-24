@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scrolling Shooter Game</title>
+    <style>
+        canvas { display: block; margin: 0 auto; background-color: #87CEEB; }
+        .button { position: absolute; font-size: 30px; }
+        #fireButton { top: 20px; left: 20px; }
+        #rocketButton { top: 20px; left: 80px; }
+        #gearButton { top: 20px; left: 140px; }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <button id="fireButton" class="button">🔥</button>
+    <button id="rocketButton" class="button">🚀</button>
+    <button id="gearButton" class="button">⚙️</button>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let planeImg = new Image();
+        planeImg.src = 'plane.png'; // Replace with actual path to your plane image
+        let plane = {
+            x: 50,
+            y: canvas.height / 2 - 25,
+            width: 50,
+            height: 50,
+            speed: 5
+        };
+        
+        let bullets = [];
+        let rockets = [];
+        let enemies = [];
+        let stage = 1;
+        let balloonCount = 0;
+        let gamePaused = false;
+
+        let keys = { up: false, down: false };
+
+        // Touch movement
+        let touchStartY = null;
+        canvas.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            if (touchStartY !== null) {
+                let touchMoveY = e.touches[0].clientY;
+                let dy = touchMoveY - touchStartY;
+                plane.y = Math.max(0, Math.min(canvas.height - plane.height, plane.y + dy));
+                touchStartY = touchMoveY;
+            }
+        });
+
+        // Game loop
+        function gameLoop() {
+            if (gamePaused) return;
+            update();
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Update game state
+        function update() {
+            moveBullets();
+            moveRockets();
+            moveEnemies();
+            checkCollisions();
+        }
+
+        // Move bullets
+        function moveBullets() {
+            bullets.forEach((bullet, index) => {
+                bullet.x += bullet.speed;
+                if (bullet.x > canvas.width) {
+                    bullets.splice(index, 1);
+                }
+            });
+        }
+
+        // Move rockets
+        function moveRockets() {
+            rockets.forEach((rocket, index) => {
+                rocket.x += rocket.speed;
+                if (rocket.x > canvas.width) {
+                    rockets.splice(index, 1);
+                }
+            });
+        }
+
+        // Move enemies (balloons)
+        function moveEnemies() {
+            enemies.forEach((balloon, index) => {
+                balloon.x -= 2;
+                if (balloon.x < 0) {
+                    enemies.splice(index, 1);
+                }
+            });
+        }
+
+        // Check for collisions between bullets and balloons
+        function checkCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                enemies.forEach((balloon, eIndex) => {
+                    if (bullet.x < balloon.x + balloon.width &&
+                        bullet.x + bullet.width > balloon.x &&
+                        bullet.y < balloon.y + balloon.height &&
+                        bullet.y + bullet.height > balloon.y) {
+                        enemies.splice(eIndex, 1);
+                        bullets.splice(bIndex, 1);
+                        balloonCount++;
+                        if (balloonCount >= 30) {
+                            alert('Stage 1 Complete!');
+                            resetStage();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Render game state
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(planeImg, plane.x, plane.y, plane.width, plane.height);
+            bullets.forEach(bullet => ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height));
+            rockets.forEach(rocket => ctx.fillRect(rocket.x, rocket.y, rocket.width, rocket.height));
+            enemies.forEach(balloon => ctx.fillRect(balloon.x, balloon.y, balloon.width, balloon.height));
+        }
+
+        // Start shooting bullets
+        let fireInterval;
+        document.getElementById('fireButton').addEventListener('click', () => {
+            if (fireInterval) return;  // Prevent firing multiple times
+            fireInterval = setInterval(() => {
+                let bullet = { x: plane.x + plane.width, y: plane.y + plane.height / 2, width: 10, height: 5, speed: 3 };
+                bullets.push(bullet);
+            }, 1000);
+        });
+
+        // Fire a rocket
+        document.getElementById('rocketButton').addEventListener('click', () => {
+            let rocket = { x: plane.x + plane.width, y: plane.y + plane.height / 2, width: 15, height: 5, speed: 5 };
+            rockets.push(rocket);
+        });
+
+        // Pause the game and move to upgrade scene
+        document.getElementById('gearButton').addEventListener('click', () => {
+            gamePaused = true;
+            alert('Game Paused. Going to upgrade scene...');
+            // Implement upgrade scene transition here
+        });
+
+        // Spawn enemies (balloons)
+        function spawnBalloons() {
+            setInterval(() => {
+                if (stage === 1) {
+                    let balloon = { x: canvas.width, y: Math.random() * (canvas.height - 50), width: 40, height: 50 };
+                    enemies.push(balloon);
+                }
+            }, 2000);  // Balloons spawn every 2 seconds
+        }
+
+        // Reset stage after completing level 1
+        function resetStage() {
+            balloonCount = 0;
+            enemies = [];
+            spawnBalloons();  // Restart balloon spawn
+        }
+
+        // Initialize the game
+        spawnBalloons();
+        gameLoop();
+
+    </script>
+</body>
+</html>
